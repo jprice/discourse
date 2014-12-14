@@ -1,4 +1,5 @@
 require 'spec_helper'
+require_dependency 'single_sign_on'
 
 describe Admin::UsersController do
 
@@ -20,6 +21,27 @@ describe Admin::UsersController do
       it 'returns JSON' do
         xhr :get, :index
         ::JSON.parse(response.body).should be_present
+      end
+
+      context 'when showing emails' do
+
+        it "returns email for all the users" do
+          xhr :get, :index, show_emails: "true"
+          data = ::JSON.parse(response.body)
+          data.each do |user|
+            user["email"].should be_present
+          end
+        end
+
+        it "logs an enty for all email shown" do
+          UserHistory.where(action: UserHistory.actions[:check_email], acting_user_id: @user.id).count.should == 0
+
+          xhr :get, :index, show_emails: "true"
+          data = ::JSON.parse(response.body)
+
+          UserHistory.where(action: UserHistory.actions[:check_email], acting_user_id: @user.id).count.should == data.length
+        end
+
       end
     end
 
@@ -314,7 +336,7 @@ describe Admin::UsersController do
         before do
           @user = Fabricate(:user)
           topic = create_topic(user: @user)
-          post = create_post(topic: topic, user: @user)
+          _post = create_post(topic: topic, user: @user)
           @user.stubs(:first_post_created_at).returns(Time.zone.now)
           User.expects(:find_by).with(id: @delete_me.id).returns(@user)
         end
@@ -335,6 +357,37 @@ describe Admin::UsersController do
       it "deletes the user record" do
         UserDestroyer.any_instance.expects(:destroy).returns(true)
         xhr :delete, :destroy, id: @delete_me.id
+      end
+    end
+
+    context 'activate' do
+      before do
+        @reg_user = Fabricate(:inactive_user)
+      end
+
+      it "returns success" do
+        xhr :put, :activate, user_id: @reg_user.id
+        response.should be_success
+        json = ::JSON.parse(response.body)
+        json['success'].should == "OK"
+      end
+    end
+
+    context 'log_out' do
+      before do
+        @reg_user = Fabricate(:user)
+      end
+
+      it "returns success" do
+        xhr :put, :log_out, user_id: @reg_user.id
+        response.should be_success
+        json = ::JSON.parse(response.body)
+        json['success'].should == "OK"
+      end
+
+      it "returns 404 when user_id does not exist" do
+        xhr :put, :log_out, user_id: 123123
+        response.should_not be_success
       end
     end
 
@@ -391,6 +444,66 @@ describe Admin::UsersController do
       end
 
     end
+
+    context "delete_other_accounts_with_same_ip" do
+
+      it "works" do
+        Fabricate(:user, ip_address: "42.42.42.42")
+        Fabricate(:user, ip_address: "42.42.42.42")
+
+        UserDestroyer.any_instance.expects(:destroy).twice
+
+        xhr :delete, :delete_other_accounts_with_same_ip, ip: "42.42.42.42", exclude: -1, order: "trust_level DESC"
+      end
+
+    end
+
+    context ".invite_admin" do
+      it 'should invite admin' do
+        xhr :post, :invite_admin, name: 'Bill', username: 'bill22', email: 'bill@bill.com'
+        response.should be_success
+
+        u = User.find_by(email: 'bill@bill.com')
+        u.name.should == "Bill"
+        u.username.should == "bill22"
+        u.admin.should == true
+      end
+    end
+
+  end
+
+  it 'can sync up sso' do
+    log_in(:admin)
+
+    SiteSetting.enable_sso = true
+    SiteSetting.sso_overrides_email = true
+    SiteSetting.sso_overrides_name = true
+    SiteSetting.sso_overrides_username = true
+
+    SiteSetting.sso_secret = "sso secret"
+
+    sso = SingleSignOn.new
+    sso.sso_secret = "sso secret"
+    sso.name = "Bob The Bob"
+    sso.username = "bob"
+    sso.email = "bob@bob.com"
+    sso.external_id = "1"
+
+    user = DiscourseSingleSignOn.parse(sso.payload)
+                                .lookup_or_create_user
+
+
+    sso.name = "Bill"
+    sso.username = "Hokli$$!!"
+    sso.email = "bob2@bob.com"
+
+    xhr :post, :sync_sso, Rack::Utils.parse_query(sso.payload)
+    response.should be_success
+
+    user.reload
+    user.email.should == "bob2@bob.com"
+    user.name.should == "Bill"
+    user.username.should == "Hokli"
 
   end
 

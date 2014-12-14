@@ -1,59 +1,17 @@
-/**
-  We use this class to keep on top of streaming and filtering posts within a topic.
-
-  @class PostStream
-  @extends Ember.Object
-  @namespace Discourse
-  @module Discourse
-**/
 Discourse.PostStream = Em.Object.extend({
 
-  /**
-    Are we currently loading posts in any way?
-
-    @property loading
-  **/
   loading: Em.computed.or('loadingAbove', 'loadingBelow', 'loadingFilter', 'stagingPost'),
-
   notLoading: Em.computed.not('loading'),
-
   filteredPostsCount: Em.computed.alias("stream.length"),
 
-  /**
-    Have we loaded any posts?
-
-    @property hasPosts
-  **/
-  hasPosts: function(){
+  hasPosts: function() {
     return this.get('posts.length') > 0;
   }.property("posts.@each"),
 
-  /**
-    Do we have a stream list of post ids?
-
-    @property hasStream
-  **/
   hasStream: Em.computed.gt('filteredPostsCount', 0),
-
-  /**
-    Can we append more posts to our current stream?
-
-    @property canAppendMore
-  **/
   canAppendMore: Em.computed.and('notLoading', 'hasPosts', 'lastPostNotLoaded'),
-
-  /**
-    Can we prepend more posts to our current stream?
-
-    @property canPrependMore
-  **/
   canPrependMore: Em.computed.and('notLoading', 'hasPosts', 'firstPostNotLoaded'),
 
-  /**
-    Have we loaded the first post in the stream?
-
-    @property firstPostPresent
-  **/
   firstPostPresent: function() {
     if (!this.get('hasLoadedData')) { return false; }
     return !!this.get('posts').findProperty('id', this.get('firstPostId'));
@@ -61,47 +19,22 @@ Discourse.PostStream = Em.Object.extend({
 
   firstPostNotLoaded: Em.computed.not('firstPostPresent'),
 
-  /**
-    The first post that we have loaded. Useful for checking to see if we should scroll upwards
-
-    @property firstLoadedPost
-  **/
   firstLoadedPost: function() {
     return _.first(this.get('posts'));
   }.property('posts.@each'),
 
-  /**
-    The last post we have loaded. Useful for checking to see if we should load more
-
-    @property lastLoadedPost
-  **/
   lastLoadedPost: function() {
     return _.last(this.get('posts'));
   }.property('posts.@each'),
 
-  /**
-    Returns the id of the first post in the set
-
-    @property firstPostId
-  **/
   firstPostId: function() {
     return this.get('stream')[0];
   }.property('stream.@each'),
 
-  /**
-    Returns the id of the last post in the set
-
-    @property lastPostId
-  **/
   lastPostId: function() {
     return _.last(this.get('stream'));
   }.property('stream.@each'),
 
-  /**
-    Have we loaded the last post in the stream?
-
-    @property loadedAllPosts
-  **/
   loadedAllPosts: function() {
     if (!this.get('hasLoadedData')) { return false; }
     return !!this.get('posts').findProperty('id', this.get('lastPostId'));
@@ -130,7 +63,7 @@ Discourse.PostStream = Em.Object.extend({
 
   hasNoFilters: function() {
     var streamFilters = this.get('streamFilters');
-    return !(streamFilters && ((streamFilters.filter === 'summary') || streamFilters.userFilters));
+    return !(streamFilters && ((streamFilters.filter === 'summary') || streamFilters.username_filters));
   }.property('streamFilters.[]', 'topic.posts_count', 'posts.length'),
 
   /**
@@ -149,7 +82,7 @@ Discourse.PostStream = Em.Object.extend({
     var firstIndex = this.indexOf(firstPost);
     if (firstIndex === -1) { return []; }
 
-    var startIndex = firstIndex - Discourse.SiteSettings.posts_per_page;
+    var startIndex = firstIndex - this.get('topic.chunk_size');
     if (startIndex < 0) { startIndex = 0; }
     return stream.slice(startIndex, firstIndex);
 
@@ -173,7 +106,7 @@ Discourse.PostStream = Em.Object.extend({
     if ((lastIndex + 1) >= this.get('highest_post_number')) { return []; }
 
     // find our window of posts
-    return stream.slice(lastIndex+1, lastIndex+Discourse.SiteSettings.posts_per_page+1);
+    return stream.slice(lastIndex+1, lastIndex + this.get('topic.chunk_size') + 1);
   }.property('lastLoadedPost', 'stream.@each'),
 
 
@@ -259,6 +192,31 @@ Discourse.PostStream = Em.Object.extend({
   },
   hasLoadedData: Em.computed.and('hasPosts', 'hasStream'),
 
+  collapsePosts: function(from, to){
+    var posts = this.get('posts');
+    var remove = posts.filter(function(post){
+      var postNumber = post.get('post_number');
+      return postNumber >= from && postNumber <= to;
+    });
+
+    posts.removeObjects(remove);
+
+    // make gap
+    this.set('gaps', this.get('gaps') || {before: {}, after: {}});
+    var before = this.get('gaps.before');
+
+    var post = posts.find(function(post){
+      return post.get('post_number') > to;
+    });
+
+    before[post.get('id')] = remove.map(function(post){
+      return post.get('id');
+    });
+    post.set('hasGap', true);
+
+    this.get('stream').enumerableContentDidChange();
+  },
+
 
   /**
     Fill in a gap of posts before a particular post
@@ -291,6 +249,7 @@ Discourse.PostStream = Em.Object.extend({
 
           delete self.get('gaps.before')[postId];
           self.get('stream').enumerableContentDidChange();
+          post.set('hasGap', false);
         });
       }
     }
@@ -501,7 +460,7 @@ Discourse.PostStream = Em.Object.extend({
     this.get('stream').removeObjects(postIds);
     this.get('posts').removeObjects(posts);
     postIds.forEach(function(id){
-      identityMap.remove(id);
+      identityMap.delete(id);
     });
   },
 
@@ -623,7 +582,7 @@ Discourse.PostStream = Em.Object.extend({
   **/
   findReplyHistory: function(post) {
     var postStream = this,
-        url = "/posts/" + post.get('id') + "/reply-history.json";
+        url = "/posts/" + post.get('id') + "/reply-history.json?max_replies=" + Discourse.SiteSettings.max_reply_history;
 
     return Discourse.ajax(url).then(function(result) {
       return result.map(function (p) {
@@ -760,6 +719,9 @@ Discourse.PostStream = Em.Object.extend({
         return existing;
       }
 
+      // Update the auto_close_at value of the topic
+      this.set("topic.details.auto_close_at", post.get("topic_auto_close_at"));
+
       post.set('topic', this.get('topic'));
       postIdentityMap.set(post.get('id'), post);
 
@@ -822,7 +784,6 @@ Discourse.PostStream = Em.Object.extend({
     @returns {Promise} a promise that will resolve to the posts in the order requested.
   **/
   loadIntoIdentityMap: function(postIds) {
-
     // If we don't want any posts, return a promise that resolves right away
     if (Em.isEmpty(postIds)) {
       return Ember.RSVP.resolve();

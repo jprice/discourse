@@ -15,6 +15,8 @@ module Email
     class UserNotFoundError < ProcessingError; end
     class UserNotSufficientTrustLevelError < ProcessingError; end
     class BadDestinationAddress < ProcessingError; end
+    class TopicNotFoundError < ProcessingError; end
+    class TopicClosedError < ProcessingError; end
     class EmailLogNotFound < ProcessingError; end
     class InvalidPost < ProcessingError; end
 
@@ -39,6 +41,7 @@ module Email
       end
 
       raise BadDestinationAddress if dest_info[:type] == :invalid
+      raise TopicNotFoundError if message.header.to_s =~ /auto-generated/ || message.header.to_s =~ /auto-replied/
 
       # TODO get to a state where we can remove this
       @message = message
@@ -68,6 +71,8 @@ module Email
         @email_log = dest_info[:obj]
 
         raise EmailLogNotFound if @email_log.blank?
+        raise TopicNotFoundError if Topic.find_by_id(@email_log.topic_id).nil?
+        raise TopicClosedError if Topic.find_by_id(@email_log.topic_id).closed?
 
         create_reply
       end
@@ -113,8 +118,9 @@ module Email
       if message.multipart?
         html = fix_charset message.html_part
         text = fix_charset message.text_part
-        # TODO picking text if available may be better
-        if text && !html
+
+        # prefer plain text
+        if text
           return text
         end
       elsif message.content_type =~ /text\/html/
@@ -146,7 +152,7 @@ module Email
       end
     end
 
-    REPLYING_HEADER_LABELS = ['From', 'Sent', 'To', 'Subject', 'Reply To']
+    REPLYING_HEADER_LABELS = ['From', 'Sent', 'To', 'Subject', 'Reply To', 'Cc', 'Bcc', 'Date']
     REPLYING_HEADER_REGEX = Regexp.union(REPLYING_HEADER_LABELS.map { |lbl| "#{lbl}:" })
 
     def discourse_email_trimmer(body)
@@ -244,6 +250,7 @@ module Email
     def create_post(user, options)
       # Mark the reply as incoming via email
       options[:via_email] = true
+      options[:raw_email] = @raw
 
       creator = PostCreator.new(user, options)
       post = creator.create

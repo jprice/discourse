@@ -71,8 +71,7 @@
   margin-bottom: 0;
 }
 .modal-footer {
-  margin-left: 15px;
-  padding: 14px 0 15px;
+  padding: 14px 15px 15px;
   border-top: 1px solid scale-color-diff();
 }
 .modal-footer:before,
@@ -116,6 +115,9 @@
     }
     .warning {
       color: $danger !important;
+    }
+    .raw-email-textarea {
+      height: 300px;
     }
   }
   .password-confirmation {

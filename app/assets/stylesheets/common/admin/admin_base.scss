@@ -10,7 +10,7 @@
   th {border-top: 1px solid scale-color-diff();}
   td {border-bottom: 1px solid scale-color-diff(); border-top: 1px solid scale-color-diff();}
   tr:hover { background-color: darken($secondary, 2.5%); }
-  tr.selected { background-color: lighten($primary, 50%); }
+  tr.selected { background-color: lighten($primary, 80%); }
   .filters input { margin-bottom: 0; }
 }
 
@@ -39,6 +39,9 @@ td.flaggers td {
     }
   }
 
+  .view-options {
+    float: right;
+  }
   table.report {
     margin-top: 20px;
     tr {
@@ -66,24 +69,6 @@ td.flaggers td {
   }
 }
 
-.admin-loading {
-  width: 100px;
-  margin: 0 auto 30px auto;
-  background-color: #000;
-  @include border-radius-all(10px);
-  padding: 10px 10px 10px 30px;
-  font-size: 15px;
-  line-height: 23px;
-  text-align: center;
-  color: $secondary;
-  background: {
-    image: image-url("spinner_96_w.gif");
-    repeat: no-repeat;
-    position: 10px 8px;
-    size: 25px;
-  };
-}
-
 .ip-lookup {
   position: relative;
   display: inline-block;
@@ -97,14 +82,25 @@ td.flaggers td {
     margin-top: -2px;
     background-color: $secondary;
     padding: 12px 12px 5px;
-    .close {
-      float: right;
+
+    .other-accounts {
+      margin: 5px 0 0;
+      max-height: 200px;
+      overflow: auto;
+      width: 455px;
+      ul { margin: 0; }
+      li { list-style: none; }
+      tr td:first-of-type { width: 130px; }
     }
   }
 }
 
 .admin-container {
   margin-top: 20px;
+}
+
+.admin-title {
+  height: 45px;
 }
 
 .admin-controls {
@@ -378,6 +374,12 @@ section.details {
 
   .current-badge {
     margin: 20px;
+
+    p.help {
+      margin: 0;
+      color: scale-color($primary, $lightness: 40%);
+      font-size: 0.9em;
+    }
   }
 
   .form-horizontal {
@@ -538,6 +540,7 @@ section.details {
 
 
 .admin-flags {
+  table-layout: fixed;
 
   .hidden-post td.excerpt, .hidden-post td.user { opacity: 0.5; }
   .deleted td.excerpt, .deleted td.user { background-color: scale-color($danger, $lightness: 70%); }
@@ -546,19 +549,21 @@ section.details {
   td { vertical-align: top; }
   th { text-align: left; }
   .user {
-    width: 20px;
+    width: 25px;
     padding: 8px 0 0 0;
     text-align: center;
   }
   .excerpt {
     max-width: 700px;
-    width: 700px;
+    width: 75%;
     padding: 8px;
     word-wrap: break-word;
     .fa { display: inline-block; }
     h3 {
       max-height: 1.2em;
       overflow: hidden;
+      margin-top: 0;
+      margin-bottom: 5px;
     }
   }
   .flaggers {
@@ -1225,7 +1230,6 @@ button.ru {
 and (max-width : 850px) {
   .nav-stacked {
     .glyph {width: auto; position: relative;}
-    .fa-chevron-right {display: none;}
     > li > a {padding: 13px}
   }
 }

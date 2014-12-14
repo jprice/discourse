@@ -1,5 +1,6 @@
 # Responsible for logging the actions of admins and moderators.
 class StaffActionLogger
+
   def initialize(admin)
     @admin = admin
     raise Discourse::InvalidParameters.new('admin is nil') unless @admin && @admin.is_a?(User)
@@ -142,10 +143,39 @@ class StaffActionLogger
     }))
   end
 
+  def log_show_emails(users)
+    values = []
+
+    users.each do |user|
+      values << "(#{@admin.id}, #{UserHistory.actions[:check_email]}, #{user.id}, current_timestamp, current_timestamp)"
+    end
+
+    # bulk insert
+    UserHistory.exec_sql <<-SQL
+      INSERT INTO user_histories (acting_user_id, action, target_user_id, created_at, updated_at)
+      VALUES #{values.join(",")}
+    SQL
+  end
+
+  def log_impersonate(user, opts={})
+    raise Discourse::InvalidParameters.new("user is nil") unless user
+    UserHistory.create(params(opts).merge({
+      action: UserHistory.actions[:impersonate],
+      target_user_id: user.id
+    }))
+  end
+
+  def log_roll_up(subnets, opts={})
+    UserHistory.create(params(opts).merge({
+      action: UserHistory.actions[:roll_up],
+      details: subnets.join(", ")
+    }))
+  end
+
   private
 
-  def params(opts)
-    {acting_user_id: @admin.id, context: opts[:context]}
-  end
+    def params(opts)
+      { acting_user_id: @admin.id, context: opts[:context] }
+    end
 
 end

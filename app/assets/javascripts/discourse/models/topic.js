@@ -1,5 +1,24 @@
 Discourse.Topic = Discourse.Model.extend({
 
+  // returns createdAt if there's no bumped date
+  bumpedAt: function() {
+    var bumpedAt = this.get('bumped_at');
+    if (bumpedAt) {
+      return new Date(bumpedAt);
+    } else {
+      return this.get('createdAt');
+    }
+  }.property('bumped_at', 'createdAt'),
+
+  bumpedAtTitle: function() {
+    return I18n.t('first_post') + ": " + Discourse.Formatter.longDate(this.get('createdAt')) + "\n" +
+           I18n.t('last_post') + ": " + Discourse.Formatter.longDate(this.get('bumpedAt'));
+  }.property('bumpedAt'),
+
+  createdAt: function() {
+    return new Date(this.get('created_at'));
+  }.property('created_at'),
+
   postStream: function() {
     return Discourse.PostStream.create({topic: this});
   }.property(),
@@ -188,9 +207,15 @@ Discourse.Topic = Discourse.Model.extend({
     // Don't save unless we can
     if (!this.get('details.can_edit')) return;
 
+    var data = { title: this.get('title') };
+
+    if(this.get('category')){
+      data.category_id = this.get('category.id');
+    }
+
     return Discourse.ajax(this.get('url'), {
       type: 'PUT',
-      data: { title: this.get('title'), category_id: this.get('category.id') }
+      data: data
     });
   },
 
@@ -452,10 +477,12 @@ Discourse.Topic.reopenClass({
     });
   },
 
-  bulkOperationByFilter: function(filter, operation) {
+  bulkOperationByFilter: function(filter, operation, categoryId) {
+    var data = { filter: filter, operation: operation };
+    if (categoryId) data['category_id'] = categoryId;
     return Discourse.ajax("/topics/bulk", {
       type: 'PUT',
-      data: { filter: filter, operation: operation }
+      data: data
     });
   },
 

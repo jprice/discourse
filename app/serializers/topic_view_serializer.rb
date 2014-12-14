@@ -42,8 +42,8 @@ class TopicViewSerializer < ApplicationSerializer
              :has_deleted,
              :actions_summary,
              :expandable_first_post,
-             :is_warning
-
+             :is_warning,
+             :chunk_size
 
   # Define a delegator for each attribute of the topic we want
   attributes(*topic_attributes)
@@ -57,6 +57,8 @@ class TopicViewSerializer < ApplicationSerializer
   def details
     result = {
       auto_close_at: object.topic.auto_close_at,
+      auto_close_hours: object.topic.auto_close_hours,
+      auto_close_based_on_last_post: object.topic.auto_close_based_on_last_post,
       created_by: BasicUserSerializer.new(object.topic.user, scope: scope, root: false),
       last_poster: BasicUserSerializer.new(object.topic.last_poster, scope: scope, root: false)
     }
@@ -111,6 +113,9 @@ class TopicViewSerializer < ApplicationSerializer
     result
   end
 
+  def chunk_size
+    object.chunk_size
+  end
 
   def is_warning
     object.topic.private_message? && object.topic.subtype == TopicSubtype.moderator_warning

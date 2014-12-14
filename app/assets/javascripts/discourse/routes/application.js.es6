@@ -1,6 +1,13 @@
-var ApplicationRoute = Em.Route.extend({
+var ApplicationRoute = Discourse.Route.extend({
+
+  siteTitle: Discourse.computed.setting('title'),
 
   actions: {
+    _collectTitleTokens: function(tokens) {
+      tokens.push(this.get('siteTitle'));
+      Discourse.set('_docTitle', tokens.join(' - '));
+    },
+
     showTopicEntrance: function(data) {
       this.controllerFor('topic-entrance').send('show', data);
     },
@@ -8,13 +15,8 @@ var ApplicationRoute = Em.Route.extend({
     composePrivateMessage: function(user) {
       var self = this;
       this.transitionTo('userActivity', user).then(function () {
-        self.controllerFor('user-activity').send('composePrivateMessage');
+        self.controllerFor('user-activity').send('composePrivateMessage', user);
       });
-    },
-
-    expandUser: function(user) {
-      this.controllerFor('user-expansion').show(user.get('username'), user.get('uploaded_avatar_id'));
-      return true;
     },
 
     error: function(err, transition) {
@@ -25,10 +27,16 @@ var ApplicationRoute = Em.Route.extend({
       }
 
       var exceptionController = this.controllerFor('exception'),
-          errorString = err.toString();
-      if (err.statusText) {
-        errorString = err.statusText;
-      }
+          errorString = err.toString(),
+          stack = err.stack;
+
+      // If we have a stack call `toString` on it. It gives us a better
+      // stack trace since `console.error` uses the stack track of this
+      // error callback rather than the original error.
+      if (stack) { errorString = stack.toString(); }
+
+      if (err.statusText) { errorString = err.statusText; }
+
       var c = window.console;
       if (c && c.error) {
         c.error(errorString);
@@ -81,6 +89,16 @@ var ApplicationRoute = Em.Route.extend({
 
     showKeyboardShortcutsHelp: function() {
       Discourse.Route.showModal(this, 'keyboardShortcutsHelp');
+    },
+
+    showSearchHelp: function() {
+      var self = this;
+
+      // TODO: @EvitTrout how do we get a loading indicator here?
+      Discourse.ajax("/static/search_help.html", { dataType: 'html' }).then(function(html){
+        Discourse.Route.showModal(self, 'searchHelp', html);
+      });
+
     },
 
 

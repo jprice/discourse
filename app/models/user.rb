@@ -2,7 +2,6 @@ require_dependency 'email'
 require_dependency 'email_token'
 require_dependency 'trust_level'
 require_dependency 'pbkdf2'
-require_dependency 'summarize'
 require_dependency 'discourse'
 require_dependency 'post_destroyer'
 require_dependency 'user_name_suggester'
@@ -25,7 +24,7 @@ class User < ActiveRecord::Base
   has_many :post_actions, dependent: :destroy
   has_many :user_badges, -> {where('user_badges.badge_id IN (SELECT id FROM badges where enabled)')}, dependent: :destroy
   has_many :badges, through: :user_badges
-  has_many :email_logs, dependent: :destroy
+  has_many :email_logs, dependent: :delete_all
   has_many :post_timings
   has_many :topic_allowed_users, dependent: :destroy
   has_many :topics_allowed, through: :topic_allowed_users, source: :topic
@@ -242,6 +241,7 @@ class User < ActiveRecord::Base
 
   def reload
     @unread_notifications_by_type = nil
+    @unread_total_notifications = nil
     @unread_pms = nil
     super
   end
@@ -252,6 +252,10 @@ class User < ActiveRecord::Base
 
   def unread_notifications
     unread_notifications_by_type.except(Notification.types[:private_message]).values.sum
+  end
+
+  def total_unread_notifications
+    @unread_total_notifications ||= notifications.where("read = false").count
   end
 
   def saw_notification_id(notification_id)
@@ -266,7 +270,8 @@ class User < ActiveRecord::Base
   def publish_notifications_state
     MessageBus.publish("/notification/#{id}",
                        {unread_notifications: unread_notifications,
-                        unread_private_messages: unread_private_messages},
+                        unread_private_messages: unread_private_messages,
+                        total_unread_notifications: total_unread_notifications},
                        user_ids: [id] # only publish the notification to this user
     )
   end
@@ -525,8 +530,8 @@ class User < ActiveRecord::Base
         .limit(3)
   end
 
-  def self.count_by_signup_date(sinceDaysAgo=30)
-    where('created_at > ?', sinceDaysAgo.days.ago).group('date(created_at)').order('date(created_at)').count
+  def self.count_by_signup_date(start_date, end_date)
+    where('created_at >= ? and created_at < ?', start_date, end_date).group('date(created_at)').order('date(created_at)').count
   end
 
 
@@ -676,6 +681,13 @@ class User < ActiveRecord::Base
     @user_fields
   end
 
+  def title=(val)
+    write_attribute(:title, val)
+    if !new_record? && user_profile
+      user_profile.update_column(:badge_granted_title, false)
+    end
+  end
+
   protected
 
   def badge_grant
@@ -778,16 +790,12 @@ class User < ActiveRecord::Base
     end
   end
 
-  # Delete inactive accounts that are over a week old
-  def self.purge_inactive
+  # Delete unactivated accounts (without verified email) that are over a week old
+  def self.purge_unactivated
 
-    # You might be wondering why this query matches on post_count = 0. The reason
-    # is a long time ago we had a bug where users could post before being activated
-    # and some sites still have those records which can't be purged.
     to_destroy = User.where(active: false)
                      .joins('INNER JOIN user_stats AS us ON us.user_id = users.id')
-                     .where("created_at < ?", SiteSetting.purge_inactive_users_grace_period_days.days.ago)
-                     .where('us.post_count = 0')
+                     .where("created_at < ?", SiteSetting.purge_unactivated_users_grace_period_days.days.ago)
                      .where('NOT admin AND NOT moderator')
                      .limit(100)
 
@@ -862,12 +870,13 @@ end
 #  uploaded_avatar_id            :integer
 #  email_always                  :boolean          default(FALSE), not null
 #  mailing_list_mode             :boolean          default(FALSE), not null
-#  primary_group_id              :integer
 #  locale                        :string(10)
+#  primary_group_id              :integer
 #  registration_ip_address       :inet
 #  last_redirected_to_top_at     :datetime
 #  disable_jump_reply            :boolean          default(FALSE), not null
 #  edit_history_public           :boolean          default(FALSE), not null
+#  trust_level_locked            :boolean          default(FALSE), not null
 #
 # Indexes
 #

@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 module ::Kernel
   def rails_master?
-    ENV["RAILS_MASTER"]
+    ENV["RAILS_MASTER"] == '1'
   end
 end
 
@@ -67,16 +67,19 @@ unless Bundler::Dependency::PLATFORM_MAP.include? :mri_21
    end
 end
 
-gem 'seed-fu', '~> 2.3.3'
 
 if rails_master?
+  gem 'arel', git: 'https://github.com/rails/arel.git'
   gem 'rails', git: 'https://github.com/rails/rails.git'
-  gem 'actionpack-action_caching', git: 'https://github.com/rails/actionpack-action_caching.git'
+  gem 'rails-observers', git: 'https://github.com/SamSaffron/rails-observers.git'
+  gem 'seed-fu', git: 'https://github.com/SamSaffron/seed-fu.git', branch: 'discourse'
 else
+  gem 'seed-fu', '~> 2.3.3'
   gem 'rails'
-  gem 'actionpack-action_caching'
+  gem 'rails-observers'
 end
-gem 'rails-observers'
+
+gem 'actionpack-action_caching'
 
 # Rails 4.1.6+ will relax the mail gem version requirement to `~> 2.5, >= 2.5.4`.
 # However, mail gem 2.6.x currently does not work with discourse because of the
@@ -91,7 +94,11 @@ gem 'redis', require:  ["redis", "redis/connection/hiredis"]
 # We use some ams 0.8.0 features, need to amend code
 # to support 0.9 etc, bench needs to run and ensure no
 # perf regressions
-gem 'active_model_serializers', '~> 0.8.0'
+if rails_master?
+  gem 'active_model_serializers', github: 'rails-api/active_model_serializers', branch: '0-8-stable'
+else
+  gem 'active_model_serializers', '~> 0.8.0'
+end
 
 
 gem 'onebox'
@@ -113,11 +120,7 @@ gem 'fastimage'
 gem 'fog', '1.22.1', require: false
 gem 'unf', require: false
 
-# see: https://twitter.com/samsaffron/status/412360162297393152
-# Massive amount of changes made in branch we use, no PR upstreamed
-# We need to get this sorted
-# https://github.com/samsaffron/email_reply_parser
-gem 'email_reply_parser-discourse', require: 'email_reply_parser'
+gem 'email_reply_parser'
 
 # note: for image_optim to correctly work you need
 # sudo apt-get install -y advancecomp gifsicle jpegoptim libjpeg-progs optipng pngcrush
@@ -139,8 +142,15 @@ gem 'omniauth-github-discourse', require: 'omniauth-github'
 gem 'omniauth-oauth2', require: false
 gem 'omniauth-google-oauth2'
 gem 'oj'
-# while resolving https://groups.google.com/forum/#!topic/ruby-pg/5_ylGmog1S4
-gem 'pg', '0.15.1'
+
+if rails_master?
+  # native casting
+  gem 'pg', '0.18.0.pre20141117110243'
+else
+  # while resolving https://groups.google.com/forum/#!topic/ruby-pg/5_ylGmog1S4
+  gem 'pg', '0.15.1'
+end
+
 gem 'pry-rails', require: false
 gem 'rake'
 
@@ -240,6 +250,8 @@ gem 'stackprof', require: false, platform: :mri_21
 gem 'memory_profiler', require: false, platform: :mri_21
 
 gem 'rmmseg-cpp', require: false
+
+gem 'stringex', require: false
 
 gem 'logster'
 

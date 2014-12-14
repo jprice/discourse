@@ -56,16 +56,16 @@ class TopicQuery
     # When logged in we start with different results
     if @user
       builder.add_results(unread_results(topic: topic, per_page: builder.results_left), :high)
-      builder.add_results(new_results(topic: topic, per_page: builder.category_results_left), :high) unless builder.category_full?
+      builder.add_results(new_results(topic: topic, per_page: builder.category_results_left)) unless builder.full?
     end
-    builder.add_results(random_suggested(topic, builder.results_left, builder.excluded_topic_ids), :low) unless builder.full?
+    builder.add_results(random_suggested(topic, builder.results_left, builder.excluded_topic_ids)) unless builder.full?
 
     create_list(:suggested, {}, builder.results)
   end
 
   # The latest view of topics
   def list_latest
-    TopicList.new(:latest, @user, latest_results)
+    create_list(:latest, {}, latest_results)
   end
 
   # The starred topics
@@ -80,11 +80,11 @@ class TopicQuery
   end
 
   def list_new
-    TopicList.new(:new, @user, new_results)
+    create_list(:new, {}, new_results)
   end
 
   def list_unread
-    TopicList.new(:new, @user, unread_results)
+    create_list(:unread, {}, unread_results)
   end
 
   def list_posted
@@ -111,19 +111,19 @@ class TopicQuery
 
   def list_private_messages(user)
     list = private_messages_for(user)
-    TopicList.new(:private_messages, user, list)
+    create_list(:private_messages, {}, list)
   end
 
   def list_private_messages_sent(user)
     list = private_messages_for(user)
     list = list.where(user_id: user.id)
-    TopicList.new(:private_messages, user, list)
+    create_list(:private_messages, {}, list)
   end
 
   def list_private_messages_unread(user)
     list = private_messages_for(user)
     list = list.where("tu.last_read_post_number IS NULL OR tu.last_read_post_number < topics.highest_post_number")
-    TopicList.new(:private_messages, user, list)
+    create_list(:private_messages, {}, list)
   end
 
   def list_category(category)
@@ -158,7 +158,7 @@ class TopicQuery
     def create_list(filter, options={}, topics = nil)
       topics ||= default_results(options)
       topics = yield(topics) if block_given?
-      TopicList.new(filter, @user, topics)
+      TopicList.new(filter, @user, topics, options.merge(@options))
     end
 
     def private_messages_for(user)
@@ -233,7 +233,7 @@ class TopicQuery
       options.reverse_merge!(per_page: SiteSetting.topics_per_page)
 
       # Start with a list of all topics
-      result = Topic
+      result = Topic.unscoped
 
       if @user
         result = result.joins("LEFT OUTER JOIN topic_users AS tu ON (topics.id = tu.topic_id AND tu.user_id = #{@user.id.to_i})")
@@ -241,6 +241,7 @@ class TopicQuery
       end
 
       category_id = get_category_id(options[:category])
+      @options[:category_id] = category_id
       if category_id
         if options[:no_subcategories]
           result = result.where('categories.id = ?', category_id)
@@ -285,6 +286,7 @@ class TopicQuery
                                         notification_level = ?)', @user.id, level)
       end
 
+      require_deleted_clause = true
       if status = options[:status]
         case status
         when 'open'
@@ -297,9 +299,16 @@ class TopicQuery
           result = result.where('topics.visible')
         when 'invisible'
           result = result.where('NOT topics.visible')
+        when 'deleted'
+          guardian = Guardian.new(@user)
+          if guardian.is_staff?
+            result = result.where('topics.deleted_at IS NOT NULL')
+            require_deleted_clause = false
+          end
         end
       end
 
+      result = result.where('topics.deleted_at IS NULL') if require_deleted_clause
       result = result.where('topics.posts_count <= ?', options[:max_posts]) if options[:max_posts].present?
       result = result.where('topics.posts_count >= ?', options[:min_posts]) if options[:min_posts].present?
 

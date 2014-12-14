@@ -11,6 +11,9 @@ Discourse.User = Discourse.Model.extend({
   hasPMs: Em.computed.gt("private_messages_stats.all", 0),
   hasStartedPMs: Em.computed.gt("private_messages_stats.mine", 0),
   hasUnreadPMs: Em.computed.gt("private_messages_stats.unread", 0),
+  hasPosted: Em.computed.gt("post_count", 0),
+  hasNotPosted: Em.computed.not("hasPosted"),
+  canBeDeleted: Em.computed.and("can_be_deleted", "hasNotPosted"),
 
   /**
     The user's stream
@@ -258,12 +261,20 @@ Discourse.User = Discourse.Model.extend({
     return Discourse.ajax("/user_actions/" + id + ".json", { cache: 'false' }).then(function(result) {
       if (result && result.user_action) {
         var ua = result.user_action;
+
         if ((self.get('stream.filter') || ua.action_type) !== ua.action_type) return;
+        if (!self.get('stream.filter') && !self.inAllStream(ua)) return;
+
         var action = Discourse.UserAction.collapseStream([Discourse.UserAction.create(ua)]);
         stream.set('itemsLoaded', stream.get('itemsLoaded') + 1);
         stream.get('content').insertAt(0, action[0]);
       }
     });
+  },
+
+  inAllStream: function(ua) {
+    return ua.action_type === Discourse.UserAction.TYPES.posts ||
+           ua.action_type === Discourse.UserAction.TYPES.topics;
   },
 
   /**
@@ -273,11 +284,12 @@ Discourse.User = Discourse.Model.extend({
     @type {Integer}
   **/
   statsCountNonPM: function() {
+    var self = this;
+
     if (this.blank('statsExcludingPms')) return 0;
     var count = 0;
     _.each(this.get('statsExcludingPms'), function(val) {
-      if (val.action_type === Discourse.UserAction.TYPES.posts ||
-          val.action_type === Discourse.UserAction.TYPES.topics ) {
+      if (self.inAllStream(val)){
         count += val.count;
       }
     });
@@ -327,6 +339,10 @@ Discourse.User = Discourse.Model.extend({
         json.user.featured_user_badges = json.user.featured_user_badge_ids.map(function(id) {
           return userBadgesMap[id];
         });
+      }
+
+      if (json.user.card_badge) {
+        json.user.card_badge = Discourse.Badge.create(json.user.card_badge);
       }
 
       user.setProperties(json.user);
@@ -416,15 +432,14 @@ Discourse.User = Discourse.Model.extend({
     return Discourse.ajax("/users/" + this.get("username_lower") + "/emails.json", {
       type: "PUT",
       data: { context: window.location.pathname }
-    })
-    .then(function (result) {
+    }).then(function (result) {
       if (result) {
         self.setProperties({
           email: result.email,
           associated_accounts: result.associated_accounts
         });
       }
-    });
+    }, function () {});
   }
 
 });

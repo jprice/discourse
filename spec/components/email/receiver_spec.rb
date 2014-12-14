@@ -82,6 +82,147 @@ Thanks for listening."
       )
     end
 
+    it "handles multiple paragraphs when parsing html" do
+      test_parse_body(fixture_file("emails/html_paragraphs.eml")).
+          should == (
+"Awesome!
+
+Pleasure to have you here!
+
+:boom:"
+      )
+    end
+
+    it "handles newlines" do
+      test_parse_body(fixture_file("emails/newlines.eml")).
+          should == (
+"This is my reply.
+It is my best reply.
+It will also be my *only* reply."
+      )
+    end
+
+    it "handles inline reply" do
+      test_parse_body(fixture_file("emails/inline_reply.eml")).
+          should == (
+"On Wed, Oct 8, 2014 at 11:12 AM, techAPJ <info@unconfigured.discourse.org> wrote:
+
+>     techAPJ <https://meta.discourse.org/users/techapj>
+> November 28
+>
+> Test reply.
+>
+> First paragraph.
+>
+> Second paragraph.
+>
+> To respond, reply to this email or visit
+> https://meta.discourse.org/t/testing-default-email-replies/22638/3 in
+> your browser.
+>  ------------------------------
+> Previous Replies    codinghorror
+> <https://meta.discourse.org/users/codinghorror>
+> November 28
+>
+> We're testing the latest GitHub email processing library which we are
+> integrating now.
+>
+> https://github.com/github/email_reply_parser
+>
+> Go ahead and reply to this topic and I'll reply from various email clients
+> for testing.
+>   ------------------------------
+>
+> To respond, reply to this email or visit
+> https://meta.discourse.org/t/testing-default-email-replies/22638/3 in
+> your browser.
+>
+> To unsubscribe from these emails, visit your user preferences
+> <https://meta.discourse.org/my/preferences>.
+>
+
+The quick brown fox jumps over the lazy dog. The quick brown fox jumps over
+the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown
+fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.
+The quick brown fox jumps over the lazy dog. The quick brown fox jumps over
+the lazy dog. The quick brown fox jumps over the lazy dog."
+      )
+    end
+
+    it "should not include previous replies" do
+      test_parse_body(fixture_file("emails/previous_replies.eml")).should_not match /Previous Replies/
+    end
+
+    it "strips iPhone signature" do
+      test_parse_body(fixture_file("emails/iphone_signature.eml")).should_not match /Sent from my iPhone/
+    end
+
+    it "properly renders email reply from gmail web client" do
+      test_parse_body(fixture_file("emails/gmail_web.eml")).
+          should == (
+"### This is a reply from standard GMail in Google Chrome.
+
+The quick brown fox jumps over the lazy dog. The quick brown fox jumps over
+the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown
+fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.
+The quick brown fox jumps over the lazy dog. The quick brown fox jumps over
+the lazy dog. The quick brown fox jumps over the lazy dog.
+
+Here's some **bold** text in Markdown.
+
+Here's a link http://example.com"
+      )
+    end
+
+    it "properly renders email reply from iOS default mail client" do
+      test_parse_body(fixture_file("emails/ios_default.eml")).
+          should == (
+"### this is a reply from iOS default mail
+
+The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.
+
+Here's some **bold** markdown text.
+
+Here's a link http://example.com"
+      )
+    end
+
+    it "properly renders email reply from Android 5 gmail client" do
+      test_parse_body(fixture_file("emails/android_gmail.eml")).
+          should == (
+"### this is a reply from Android 5 gmail
+
+The quick brown fox jumps over the lazy dog. The quick brown fox jumps over
+the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown
+fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.
+The quick brown fox jumps over the lazy dog.
+
+This is **bold** in Markdown.
+
+This is a link to http://example.com"
+      )
+    end
+
+    it "properly renders email reply from Windows 8.1 Metro default mail client" do
+      test_parse_body(fixture_file("emails/windows_8_metro.eml")).
+          should == (
+"### reply from default mail client in Windows 8.1 Metro
+
+
+The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.
+
+
+This is a **bold** word in Markdown
+
+
+This is a link http://example.com"
+      )
+    end
+
+    it "properly renders email reply from MS Outlook client" do
+      test_parse_body(fixture_file("emails/outlook.eml")).should == "Microsoft Outlook 2010"
+    end
+
     it "converts back to UTF-8 at the end" do
       result = test_parse_body(fixture_file("emails/big5.eml"))
       result.encoding.should == Encoding::UTF_8
@@ -131,6 +272,7 @@ Thanks for listening."
         topic.posts.count.should == (start_count + 1)
         created_post = topic.posts.last
         created_post.via_email.should == true
+        created_post.raw_email.should == fixture_file("emails/valid_reply.eml")
         created_post.cooked.strip.should == fixture_file("emails/valid_reply.cooked").strip
       end
     end
@@ -204,6 +346,76 @@ Thanks for listening."
       end
     end
 
+    describe "auto response email replies should not be accepted" do
+      let!(:reply_key) { '636ca428858779856c226bb145ef4fad' }
+      let!(:email_raw) { fixture_file("emails/auto_reply.eml") }
+      it "raises a TopicNotFoundError" do
+        expect { receiver.process }.to raise_error(Email::Receiver::TopicNotFoundError)
+      end
+    end
+
+  end
+
+  describe "posting reply to a closed topic" do
+    let(:reply_key) { raise "Override this in a lower describe block" }
+    let(:email_raw) { raise "Override this in a lower describe block" }
+    let(:receiver) { Email::Receiver.new(email_raw) }
+    let(:topic) { Fabricate(:topic, closed: true) }
+    let(:post) { Fabricate(:post, topic: topic, post_number: 1) }
+    let(:replying_user_email) { 'jake@adventuretime.ooo' }
+    let(:replying_user) { Fabricate(:user, email: replying_user_email, trust_level: 2) }
+    let(:email_log) { EmailLog.new(reply_key: reply_key,
+                                   post: post,
+                                   post_id: post.id,
+                                   topic_id: topic.id,
+                                   email_type: 'user_posted',
+                                   user: replying_user,
+                                   user_id: replying_user.id,
+                                   to_address: replying_user_email
+    ) }
+
+    before do
+      email_log.save
+    end
+
+    describe "should not create post" do
+      let!(:reply_key) { '59d8df8370b7e95c5a49fbf86aeb2c93' }
+      let!(:email_raw) { fixture_file("emails/valid_reply.eml") }
+      it "raises a TopicClosedError" do
+        expect { receiver.process }.to raise_error(Email::Receiver::TopicClosedError)
+      end
+    end
+  end
+
+  describe "posting reply to a deleted topic" do
+    let(:reply_key) { raise "Override this in a lower describe block" }
+    let(:email_raw) { raise "Override this in a lower describe block" }
+    let(:receiver) { Email::Receiver.new(email_raw) }
+    let(:deleted_topic) { Fabricate(:deleted_topic) }
+    let(:post) { Fabricate(:post, topic: deleted_topic, post_number: 1) }
+    let(:replying_user_email) { 'jake@adventuretime.ooo' }
+    let(:replying_user) { Fabricate(:user, email: replying_user_email, trust_level: 2) }
+    let(:email_log) { EmailLog.new(reply_key: reply_key,
+                                   post: post,
+                                   post_id: post.id,
+                                   topic_id: deleted_topic.id,
+                                   email_type: 'user_posted',
+                                   user: replying_user,
+                                   user_id: replying_user.id,
+                                   to_address: replying_user_email
+    ) }
+
+    before do
+      email_log.save
+    end
+
+    describe "should not create post" do
+      let!(:reply_key) { '59d8df8370b7e95c5a49fbf86aeb2c93' }
+      let!(:email_raw) { fixture_file("emails/valid_reply.eml") }
+      it "raises a TopicNotFoundError" do
+        expect { receiver.process }.to raise_error(Email::Receiver::TopicNotFoundError)
+      end
+    end
   end
 
   describe "posting a new topic" do

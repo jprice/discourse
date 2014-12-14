@@ -30,8 +30,7 @@ Discourse.Route.buildRoutes(function() {
     this.resource('adminReports', { path: '/reports/:type' });
 
     this.resource('adminFlags', { path: '/flags' }, function() {
-      this.route('active');
-      this.route('old');
+      this.route('list', { path: '/:filter' });
     });
 
     this.resource('adminLogs', { path: '/logs' }, function() {
@@ -50,15 +49,15 @@ Discourse.Route.buildRoutes(function() {
         this.route('badges');
         this.route('tl3Requirements', { path: '/tl3_requirements' });
       });
+
       this.resource('adminUsersList', { path: '/list' }, function() {
-        _.each(['active', 'new', 'pending', 'admins', 'moderators', 'blocked', 'suspended',
-                'newuser', 'basicuser', 'regular', 'leaders', 'elders'], function(x) {
-          this.route(x, { path: '/' + x });
-        }, this);
+        this.route('show', {path: '/:filter'});
       });
     });
 
-    this.route('badges');
+    this.resource('adminBadges', { path: '/badges' }, function() {
+      this.route('show', { path: '/:badge_id' });
+    });
 
   });
 });

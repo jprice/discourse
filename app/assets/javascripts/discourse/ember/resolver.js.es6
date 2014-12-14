@@ -3,6 +3,24 @@
 var classify = Ember.String.classify;
 var get = Ember.get;
 
+var LOADING_WHITELIST = ['badges', 'userActivity', 'userPrivateMessages', 'admin', 'adminFlags',
+                         'user', 'preferences', 'adminEmail', 'adminUsersList'],
+    _dummyRoute,
+    _loadingView;
+
+function loadingResolver(cb) {
+  return function(parsedName) {
+    var fullNameWithoutType = parsedName.fullNameWithoutType;
+
+    if (fullNameWithoutType.indexOf('Loading') >= 0) {
+      fullNameWithoutType = fullNameWithoutType.replace('Loading', '');
+      if (LOADING_WHITELIST.indexOf(fullNameWithoutType) !== -1) {
+        return cb(fullNameWithoutType);
+      }
+    }
+  };
+}
+
 function parseName(fullName) {
   /*jshint validthis:true */
 
@@ -53,8 +71,10 @@ export default Ember.DefaultResolver.extend({
   customResolve: function(parsedName) {
     // If we end with the name we want, use it. This allows us to define components within plugins.
     var suffix = parsedName.type + 's/' + parsedName.fullNameWithoutType,
+        dashed = Ember.String.dasherize(suffix),
         moduleName = Ember.keys(requirejs.entries).find(function(e) {
-          return e.indexOf(suffix, e.length - suffix.length) !== -1;
+          return (e.indexOf(suffix, e.length - suffix.length) !== -1) ||
+                 (e.indexOf(dashed, e.length - dashed.length) !== -1);
         });
 
     var module;
@@ -66,7 +86,7 @@ export default Ember.DefaultResolver.extend({
   },
 
   resolveView: function(parsedName) {
-    return this.customResolve(parsedName) || this._super(parsedName);
+    return this.findLoadingView(parsedName) || this.customResolve(parsedName) || this._super(parsedName);
   },
 
   resolveHelper: function(parsedName) {
@@ -82,22 +102,28 @@ export default Ember.DefaultResolver.extend({
   },
 
   resolveRoute: function(parsedName) {
-    return this.customResolve(parsedName) || this._super(parsedName);
+    return this.findLoadingRoute(parsedName) || this.customResolve(parsedName) || this._super(parsedName);
   },
 
-  /**
-    Attaches a view and wires up the container properly
-
-    @method resolveTemplate
-    @param {String} parsedName the name of the template we want to resolve
-    @returns {Template} the template (if found)
-  **/
   resolveTemplate: function(parsedName) {
     return this.findPluginTemplate(parsedName) ||
            this.findMobileTemplate(parsedName) ||
            this.findTemplate(parsedName) ||
            Ember.TEMPLATES.not_found;
   },
+
+  findLoadingRoute: loadingResolver(function() {
+    _dummyRoute = _dummyRoute || Ember.Route.extend();
+    return _dummyRoute;
+  }),
+
+  findLoadingView: loadingResolver(function() {
+    if (!_loadingView) {
+      _loadingView = require('discourse/views/loading', null, null, true /* force sync */);
+      if (_loadingView && _loadingView['default']) { _loadingView = _loadingView['default']; }
+    }
+    return _loadingView;
+  }),
 
   findPluginTemplate: function(parsedName) {
     var pluginParsedName = this.parseName(parsedName.fullName.replace("template:", "template:javascripts/"));

@@ -1,9 +1,10 @@
 require_dependency 'rate_limiter'
+require_dependency 'single_sign_on'
 
 class SessionController < ApplicationController
 
   skip_before_filter :redirect_to_login_if_required
-  skip_before_filter :check_xhr, only: ['sso', 'sso_login']
+  skip_before_filter :check_xhr, only: ['sso', 'sso_login', 'become', 'sso_provider']
 
   def csrf
     render json: {csrf: form_authenticity_token }
@@ -17,6 +18,38 @@ class SessionController < ApplicationController
     end
   end
 
+  def sso_provider(payload=nil)
+    payload ||= request.query_string
+    if SiteSetting.enable_sso_provider
+      sso = SingleSignOn.parse(payload, SiteSetting.sso_secret)
+      if current_user
+        sso.name = current_user.name
+        sso.username = current_user.username
+        sso.email = current_user.email
+        sso.external_id = current_user.id.to_s
+        sso.admin = current_user.admin?
+        sso.moderator = current_user.moderator?
+        redirect_to sso.to_url(sso.return_sso_url)
+      else
+        session[:sso_payload] = request.query_string
+        redirect_to '/login'
+      end
+    else
+      render nothing: true, status: 404
+    end
+  end
+
+  # For use in development mode only when login options could be limited or disabled.
+  # NEVER allow this to work in production.
+  def become
+    raise Discourse::InvalidAccess.new unless Rails.env.development?
+    user = User.find_by_username(params[:session_id])
+    raise "User #{params[:session_id]} not found" if user.blank?
+
+    log_on_user(user)
+    redirect_to "/"
+  end
+
   def sso_login
     unless SiteSetting.enable_sso
       render nothing: true, status: 404
@@ -25,22 +58,32 @@ class SessionController < ApplicationController
 
     sso = DiscourseSingleSignOn.parse(request.query_string)
     if !sso.nonce_valid?
-      render text: "Timeout expired, please try logging in again.", status: 500
+      render text: I18n.t("sso.timeout_expired"), status: 500
       return
     end
 
     return_path = sso.return_path
     sso.expire_nonce!
 
-    if user = sso.lookup_or_create_user
-      if SiteSetting.must_approve_users? && !user.approved?
-        # TODO: need an awaiting approval message here
+    begin
+      if user = sso.lookup_or_create_user
+        if SiteSetting.must_approve_users? && !user.approved?
+          render text: I18n.t("sso.account_not_approved"), status: 403
+        else
+          log_on_user user
+        end
+        redirect_to return_path
       else
-        log_on_user user
+        render text: I18n.t("sso.not_found"), status: 500
       end
-      redirect_to return_path
-    else
-      render text: "unable to log on user", status: 500
+    rescue => e
+      details = {}
+      SingleSignOn::ACCESSORS.each do |a|
+        details[a] = sso.send(a)
+      end
+      Discourse.handle_exception(e, details)
+
+      render text: I18n.t("sso.unknown_error"), status: 500
     end
   end
 
@@ -61,6 +104,7 @@ class SessionController < ApplicationController
 
     login = params[:login].strip
     login = login[1..-1] if login[0] == "@"
+
 
     if user = User.find_by_username_or_email(login)
 
@@ -179,7 +223,12 @@ class SessionController < ApplicationController
 
   def login(user)
     log_on_user(user)
-    render_serialized(user, UserSerializer)
+
+    if payload = session.delete(:sso_payload)
+      sso_provider(payload)
+    else
+      render_serialized(user, UserSerializer)
+    end
   end
 
 end

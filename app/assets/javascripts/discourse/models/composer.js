@@ -100,33 +100,29 @@ Discourse.Composer = Discourse.Model.extend({
 
   hidePreview: Em.computed.not('showPreview'),
 
-  // Whether to disable the post button
+  // whether to disable the post button
   cantSubmitPost: function() {
-
-    // Can't submit while loading
+    // can't submit while loading
     if (this.get('loading')) return true;
 
-    // Title is required when:
-    //    - creating a new topic
-    //    - editing the 1st post
-    //    - creating a private message
-
+    // title is required when
+    //  - creating a new topic/private message
+    //  - editing the 1st post
     if (this.get('canEditTitle') && !this.get('titleLengthValid')) return true;
-
-    // Need at least one user when sending a private message
-    if ( this.get('creatingPrivateMessage') &&
-         this.get('targetUsernames') &&
-        (this.get('targetUsernames').trim() + ',').indexOf(',') === 0) {
-      return true;
-    }
 
     // reply is always required
     if (this.get('missingReplyCharacters') > 0) return true;
 
-    return this.get('canCategorize') &&
-        !Discourse.SiteSettings.allow_uncategorized_topics &&
-        !this.get('categoryId') &&
-        !Discourse.User.currentProp('staff');
+    if (this.get("privateMessage")) {
+      // need at least one user when sending a PM
+      return this.get('targetUsernames') && (this.get('targetUsernames').trim() + ',').indexOf(',') === 0;
+    } else {
+      // has a category? (when needed)
+      return this.get('canCategorize') &&
+            !Discourse.SiteSettings.allow_uncategorized_topics &&
+            !this.get('categoryId') &&
+            !Discourse.User.currentProp('staff');
+    }
   }.property('loading', 'canEditTitle', 'titleLength', 'targetUsernames', 'replyLength', 'categoryId', 'missingReplyCharacters'),
 
   /**
@@ -306,7 +302,18 @@ Discourse.Composer = Discourse.Model.extend({
       }
     }
 
+    if(opts && opts.space){
+      if(before.length > 0 && !before[before.length-1].match(/\s/)){
+        before = before + " ";
+      }
+      if(after.length > 0 && !after[0].match(/\s/)){
+        after = " " + after;
+      }
+    }
+
     this.set('reply', before + text + after);
+
+    return before.length + text.length;
   },
 
   togglePreview: function() {
@@ -473,16 +480,16 @@ Discourse.Composer = Discourse.Model.extend({
     });
     this.set('composeState', CLOSED);
 
-    return Em.Deferred.promise(function(promise) {
+    return new Ember.RSVP.Promise(function(resolve, reject) {
       post.save(function(result) {
         post.updateFromPost(result);
         composer.clearState();
       }, function(error) {
         var response = $.parseJSON(error.responseText);
         if (response && response.errors) {
-          promise.reject(response.errors[0]);
+          reject(response.errors[0]);
         } else {
-          promise.reject(I18n.t('generic_error'));
+          reject(I18n.t('generic_error'));
         }
         post.set('cooked', oldCooked);
         composer.set('composeState', OPEN);
@@ -521,7 +528,6 @@ Discourse.Composer = Discourse.Model.extend({
       admin: currentUser.get('admin'),
       yours: true,
       newPost: true,
-      auto_close_time: Discourse.Utilities.timestampFromAutocloseString(this.get('auto_close_time'))
     });
 
     if(post) {
@@ -550,7 +556,7 @@ Discourse.Composer = Discourse.Model.extend({
     }
 
     var composer = this;
-    return Em.Deferred.promise(function(promise) {
+    return new Ember.RSVP.Promise(function(resolve, reject) {
 
       composer.set('composeState', SAVING);
       createdPost.save(function(result) {
@@ -562,6 +568,7 @@ Discourse.Composer = Discourse.Model.extend({
           // It's no longer a new post
           createdPost.set('newPost', false);
           topic.set('draft_sequence', result.draft_sequence);
+          topic.set('details.auto_close_at', result.topic_auto_close_at);
           postStream.commitPost(createdPost);
           addedToStream = true;
         } else {
@@ -584,7 +591,7 @@ Discourse.Composer = Discourse.Model.extend({
           composer.set('composeState', SAVING);
         }
 
-        return promise.resolve({ post: result });
+        return resolve({ post: result });
       }, function(error) {
         // If an error occurs
         if (postStream) {
@@ -605,7 +612,7 @@ Discourse.Composer = Discourse.Model.extend({
         catch(ex) {
           parsedError = "Unknown error saving post, try again. Error: " + error.status + " " + error.statusText;
         }
-        promise.reject(parsedError);
+        reject(parsedError);
       });
     });
   },

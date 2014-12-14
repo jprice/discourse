@@ -254,6 +254,7 @@ SQL
 
   def default_icon=(val)
     self.icon ||= val
+    self.icon = val if self.icon = "fa-certificate"
   end
 
   def default_name=(val)
@@ -302,6 +303,7 @@ end
 #  trigger           :integer
 #  show_posts        :boolean          default(FALSE), not null
 #  system            :boolean          default(FALSE), not null
+#  image             :string(255)
 #
 # Indexes
 #

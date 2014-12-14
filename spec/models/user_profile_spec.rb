@@ -24,12 +24,12 @@ describe UserProfile do
     let(:user_profile) { Fabricate.build(:user_profile) }
 
     it 'is not valid without user' do
-      expect(user_profile.valid?).should == false
+      expect(user_profile.valid?).to be false
     end
 
     it 'is is valid with user' do
       user_profile.user = Fabricate.build(:user)
-      expect(user_profile.valid?).should == true
+      expect(user_profile.valid?).to be true
     end
 
     it "doesn't support really long bios" do
@@ -98,6 +98,13 @@ describe UserProfile do
 
       it 'removes the link if the user is new' do
         user.trust_level = TrustLevel[0]
+        user_profile.send(:cook)
+        expect(user_profile.bio_excerpt).to match_html("I love http://discourse.org")
+        expect(user_profile.bio_processed).to eq("<p>I love http://discourse.org</p>")
+      end
+
+      it 'removes the link if the user is suspended' do
+        user.suspended_till = 1.month.from_now
         user_profile.send(:cook)
         expect(user_profile.bio_excerpt).to match_html("I love http://discourse.org")
         expect(user_profile.bio_processed).to eq("<p>I love http://discourse.org</p>")

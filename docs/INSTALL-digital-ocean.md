@@ -1,4 +1,4 @@
-**Set up Discourse on a cloud server in under 30 minutes** with zero knowledge of Ruby, Rails or Linux shell using our [Discourse Docker image][dd]. We prefer [Digital Ocean][do], although these steps may work on other cloud providers that also support Docker. Let's begin!
+**Set up Discourse on a cloud server in under 30 minutes** with zero knowledge of Ruby, Rails or Linux shell using our [Discourse Docker image][dd]. This guide uses [Digital Ocean][do], these steps will work on other cloud providers and local installs that also support Docker. Let's begin!
 
 # Create New Digital Ocean Droplet
 
@@ -114,6 +114,8 @@ You should see Staff topics and the [Admin Quick Start Guide](https://github.com
 
 # Post-Install Maintenance
 
+We strongly suggest you turn on automatic security updates for Ubuntu via the `dpkg-reconfigure -plow unattended-upgrades` command.
+
 To **upgrade Discourse to the latest version**, visit `/admin/upgrade` and follow the instructions.
 
 The `launcher` command in the `/var/discourse` folder can be used for various kinds of maintenance:
@@ -156,6 +158,10 @@ Do you want...
 - A Content Delivery Network to speed up worldwide access? [Configure a CDN](https://meta.discourse.org/t/enable-a-cdn-for-your-discourse/14857). We recommend [Fastly](http://www.fastly.com/).
 
 - Import old content from vBulletin, PHPbb, Vanilla, Drupal, BBPress, etc? [See our open source importers](https://github.com/discourse/discourse/tree/master/script/import_scripts)
+
+- A firewall on your server? [Configure firewall](https://meta.discourse.org/t/configure-a-firewall-for-discourse/20584)
+
+- To embed Discourse [in your WordPress install](https://github.com/discourse/wp-discourse), or [on your static HTML site](http://eviltrout.com/2014/01/22/embedding-discourse.html)?
 
 If anything needs to be improved in this guide, feel free to ask on [meta.discourse.org][meta], or even better, submit a pull request.
 

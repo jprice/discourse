@@ -90,6 +90,7 @@ pt:
       facebook: 'partilhar este link no Facebook'
       google+: 'partilhar este link no Google+'
       email: 'enviar este link num email'
+    topic_admin_menu: "Ações administrativas dos Tópicos"
     edit: 'editar o título ou a categoria deste tópico'
     not_implemented: "Essa característica ainda não foi implementada, desculpe!"
     no_value: "Não"
@@ -103,6 +104,7 @@ pt:
     admin_title: "Admin"
     flags_title: "Sinalizações"
     show_more: "mostrar mais"
+    show_help: "Ajuda"
     links: "Links"
     links_lowercase: "links"
     faq: "FAQ"
@@ -122,22 +124,10 @@ pt:
     daily: "diário"
     weekly: "semanal"
     every_two_weeks: "a cada duas semanas"
-    max: "máx"
+    max_of_count: "máximo de {{count}}"
     character_count:
       one: "{{count}} caracter"
       other: "{{count}} caracteres"
-    in_n_seconds:
-      one: "em 1 segundo"
-      other: "em {{count}} segundos"
-    in_n_minutes:
-      one: "em 1 minuto"
-      other: "em {{count}} minutos"
-    in_n_hours:
-      one: "em 1 hora"
-      other: "em {{count}} horas"
-    in_n_days:
-      one: "em 1 dia"
-      other: "em {{count}} dias"
     suggested_topics:
       title: "Tópicos Sugeridos"
     about:
@@ -149,10 +139,10 @@ pt:
       stat:
         all_time: "Sempre"
         last_7_days: "Últimos 7 Dias"
-      like_count: "Contagem de Gostos"
-      topic_count: "Contagem de Tópicos"
-      post_count: "Contagem de Posts"
-      user_count: "Contagem de Utilizadores"
+      like_count: "Gostos"
+      topic_count: "Tópicos"
+      post_count: "Mensagens"
+      user_count: "Utilizadores"
     bookmarks:
       not_logged_in: "desculpe, necessita de ter a sessão iniciada para marcar posts"
       created: "adicionou este post aos marcadores"
@@ -256,13 +246,21 @@ pt:
       location_not_found: (desconhecido)
       organisation: Organização
       phone: Telefóne
-      other_accounts: Outras contas com este endereço IP
-      no_other_accounts: (nenhum)
+      other_accounts: "Outras contas com este endereço IP:"
+      delete_other_accounts: "Apagar %{count}"
+      username: "nome de utilizador"
+      trust_level: "TL"
+      read_time: "tempo de leitura"
+      topics_entered: "entrada de tópicos"
+      post_count: "# mensagens"
+      confirm_delete_other_accounts: "Tem a certeza que quer apagar estas contas?"
     user:
+      said: "{{username}}:"
       profile: "Perfil"
       mute: "Silenciar"
       edit: "Editar Preferências"
       download_archive: "fazer o download do arquivo das minhas mensagens"
+      new_private_message: "Nova mensagem privada"
       private_message: "Mensagem Particular"
       private_messages: "Mensagens"
       activity_stream: "Atividade"
@@ -272,6 +270,8 @@ pt:
       invited_by: "Convidado Por"
       trust_level: "Nível de Confiança"
       notifications: "Notificações"
+      dismiss_notifications: "Marcar tudo como lido"
+      dismiss_notifications_tooltip: "Marcar como lidas todas as notificações por ler"
       disable_jump_reply: "Não vá para o seu novo post após ter respondido"
       dynamic_favicon: "Exibir notificações de novas mensagens no favicon (experimental)"
       edit_history_public: "Permitir que outros utilizadores vejam as minhas revisões de publicação"
@@ -284,6 +284,7 @@ pt:
       admin_tooltip: "Este utilizador é um admin"
       suspended_notice: "Utilizador suspenso até {{date}}."
       suspended_reason: "Razão: "
+      github_profile: "Github"
       mailing_list_mode: "Receber um email para cada post novo (salvo quando silenciar o tópico ou categoria)"
       watched_categories: "Observado"
       watched_categories_instructions: "Observará automaticamente todos os novos tópicos nestas categorias. Será notificado de todos os novos posts e tópicos. Além disso, a contagem de posts novos e não lidos irá surgir ao lado da listagem do tópico. "
@@ -296,6 +297,7 @@ pt:
       deleted_yourself: "A sua conta foi eliminada com sucesso."
       delete_yourself_not_allowed: "Neste momento não pode eliminar a sua conta. Contacte um administrador para que este elimine a sua conta por sí."
       unread_message_count: "Mensagens"
+      admin_delete: "Apagar"
       staff_counters:
         flags_given: "denúncias úteis"
         flagged_posts: "posts sinalizados"
@@ -337,29 +339,38 @@ pt:
         image_is_not_a_square: "Alerta: nós cortamos a sua imagem, pois ela não era rectangular."
       change_profile_background:
         title: "Fundo de Perfil"
+        instructions: "A imagem de fundo será centrada e terá por defeito uma largura de 850px."
+      change_card_background:
+        title: "Fundo do cartão de utilizador"
+        instructions: "As imagens de fundo serão centradas e terão por defeito uma largura de 590px."
       email:
         title: "Email"
-        ok: "Parece OK. Vamos enviar um email para confirmar."
-        invalid: "Por favor coloque um endereço de email válido."
-        authenticated: "O seu email foi autenticado por {{provider}}."
-        frequency: "Vamos enviar-lhe emails apenas quando não o virmos há algum tempo e não tiver visto as coisas que temos enviado."
+        instructions: "Nunca mostrar ao público"
+        ok: "Enviar-lhe-emos um email para confirmar"
+        invalid: "Por favor introduza um endereço de email válido"
+        authenticated: "O seu email foi autenticado por {{provider}}"
+        frequency:
+          zero: "Enviar-lhe-emos um email imediatamente caso não leia o que lhe estamos a enviar."
+          one: "Apenas lhe enviaremos um email se não o virmos no último minuto e caso não leia o que lhe estamos a enviar."
+          other: "Apenas lhe enviaremos um email se não o virmos nos últimos {{count}} minutos e caso não leia o que lhe estamos a enviar."
       name:
         title: "Nome"
-        instructions: "O seu nome completo."
-        too_short: "O seu nome é muito curto."
-        ok: "O seu nome parece bom."
+        instructions: "O seu nome completo (opcional)"
+        too_short: "O seu nome é demasiado curto"
+        ok: "O seu nome parece adequado"
       username:
         title: "Nome de Utilizador"
-        short_instructions: "As pessoas podem mencioná-lo utilizando @{{username}}."
-        available: "O seu nome de utilizador está disponível."
-        global_match: "O email corresponde ao nome de utilizador registado."
+        instructions: "Único, sem espaços, curto"
+        short_instructions: "Podem mencioná-lo como @{{username}}"
+        available: "O seu nome de utilizador está disponível"
+        global_match: "O email coincide com o nome de utilizador no registo"
         global_mismatch: "Já está registado. Tente {{suggestion}}?"
         not_available: "Não está disponível. Tente {{suggestion}}?"
-        too_short: "O seu nome de utilizador é muito curto."
-        too_long: "O seu nome de utilizador é muito comprido."
+        too_short: "O seu nome de utilizador é demasiado curto"
+        too_long: "O seu nome de utilizador é demasiado longo"
         checking: "A verificar a disponibilidade do nome de utilizador..."
-        enter_email: 'Nome de utilizador encontrado. Coloque o email referente a ele.'
-        prefilled: "O email corresponde ao nome de um utilizador registado."
+        enter_email: 'Nome de utilizador encontrado, introduza o email correspondente'
+        prefilled: "Email corresponde com nome de utilizador registado"
       locale:
         title: "Idioma de Interface"
         instructions: "Idioma da interface de utilizador. Será alterado quando atualizar a página."
@@ -372,6 +383,8 @@ pt:
       created: "Juntou-se"
       log_out: "Terminar sessão"
       location: "Localização"
+      card_badge:
+        title: "Medalha de cartão de utilizador"
       website: "Site"
       email_settings: "Email"
       email_digests:
@@ -418,6 +431,8 @@ pt:
         expired: "Este convite expirou."
         rescind: "Remover"
         rescinded: "Convite Removido"
+        reinvite: "Reenviar convite"
+        reinvited: "Convite reenviado"
         time_read: "Tempo de Leitura"
         days_visited: "Dias Visitados"
         account_age_days: "Idade da conta em dias"
@@ -433,6 +448,8 @@ pt:
         too_short: "A sua palavra-chave é muito curta."
         common: "Essa senha é demasiada comum."
         ok: "A sua palavra-chave parece estar OK."
+        instructions: "Pelo menos %{count} caracteres."
+      associated_accounts: "Contas associadas"
       ip_address:
         title: "Último endereço IP"
       registration_ip_address:
@@ -468,6 +485,8 @@ pt:
         fixed: "Carregar Página"
     close: "Fechar"
     assets_changed_confirm: "Este site foi actualizado. Recarregar agora para a versão mais recente?"
+    logout: "Foi-lhe feito 'log out'"
+    refresh: "Atualizar"
     read_only_mode:
       enabled: "Um administrador activou o modo só de leitura. Pode continuar a navegar no site mas as interacções poderão não funcionar. "
       login_disabled: "A função de login está desactivada enquanto o site se encontrar no modo só de leitura."
@@ -506,6 +525,7 @@ pt:
     created: 'Criado'
     created_lowercase: 'criado'
     trust_level: 'Nível de confiança'
+    search_hint: 'nome de utilizador, email ou endereço de IP'
     create_account:
       title: "Criar Conta Nova"
       failed: "Houve um erro, talvez este email já esteja registado, tente usar o link Esqueci-me da Palavra-chave."
@@ -567,7 +587,7 @@ pt:
       drafts_offline: "rascunhos offline"
       min_length:
         need_more_for_title: "{{n}} no título"
-        need_more_for_reply: "{{n}} para chegar à mensagem"
+        need_more_for_reply: "{{n}} para avançar"
       error:
         title_missing: "O Título é obrigatório"
         title_too_short: "Título tem que ter no mínimo {{min}} caracteres."
@@ -580,8 +600,8 @@ pt:
       reply_here: "Responda Aqui"
       reply: "Responder"
       cancel: "Cancelar"
-      create_topic: "Criar um Tópico"
-      create_pm: "Criar uma Mensagem Particular"
+      create_topic: "Novo Tópico"
+      create_pm: "Mensagem privada"
       title: "Ou prima Ctrl+Enter"
       users_placeholder: "Adicionar um utilizador"
       title_placeholder: "Numa breve frase, de que se trata esta discussão?"
@@ -591,7 +611,7 @@ pt:
       view_new_post: "Ver as suas novas mensagens."
       saving: "A Gravar..."
       saved: "Gravado!"
-      saved_draft: "Tem um rascunho de um post em progresso. Seleccione esta barra para retomar a edição."
+      saved_draft: "Mensagem rascunho em progresso. Selecione para continuar."
       uploading: "A enviar..."
       show_preview: 'mostrar pré-visualização &raquo;'
       hide_preview: '&laquo; esconder pré-visualização'
@@ -621,10 +641,15 @@ pt:
       help: "Ajuda da edição Markdown"
       toggler: "esconder ou exibir o painel de composição"
       admin_options_title: "Configurações opcionais de staff para este tópico"
-      auto_close_label: "Tempo de fecho automático do tópico:"
-      auto_close_units: "(# de horas, de tempo, ou timestamp)"
-      auto_close_examples: 'insira tempo absoluto ou número de horas — 24, 17:00, 2013-11-22 14:00'
-      auto_close_error: "Por favor insira um valor válido."
+      auto_close:
+        label: "Tempo de fecho automático do tópico:"
+        error: "Por favor introduza um valor válido."
+        based_on_last_post: "Não feche até que a última mensagem do tópico tenha pelo menos este tempo."
+        all:
+          examples: 'Insira o número de horas (24), tempo absoluto (17:30) ou um selo temporal (2013-11-22 14:00).'
+        limited:
+          units: "(# de horas)"
+          examples: 'Introduza o número de horas (24).'
     notifications:
       title: "notificações de menção de @nome, respostas às suas mensagens e tópicos, mensagens privadas, etc"
       none: "Não há notifcações neste momento."
@@ -647,10 +672,10 @@ pt:
       title_with_attachments: "Adicionar uma imagem ou um ficheiro"
       from_my_computer: "Do meu dispositivo "
       from_the_web: "Da internet"
-      remote_tip: "ligação para a imagem http://example.com/image.jpg"
-      remote_tip_with_attachments: "link para a imagem ou ficheiro  http://example.com/file.ext (extensões permitidas: {{authorized_extensions}})."
+      remote_tip: "hiperligação para imagem"
+      remote_tip_with_attachments: "hiperligação para imagem ou ficheiro ({{authorized_extensions}})"
       local_tip: "Carregue para selecionar um ficheiro do seu dispositivo"
-      local_tip_with_attachments: "carregue para selecionar uma imagem ou ficheiro do seu dispositivo (extensões permitidas: {{authorized_extensions}})"
+      local_tip_with_attachments: "pressione para selecionar uma imagem ou ficheiro do seu dispositivo ({{authorized_extensions}})"
       hint: "(poderá também arrastar o ficheiro para o editor para fazer o upload)"
       hint_for_supported_browsers: "(também pode arrastar ou colar imagens no editor de forma a carregá-las)"
       uploading: "A enviar"
@@ -664,6 +689,7 @@ pt:
         user: "Procurar posts por @{{username}}"
         category: "Procurar na categoria \"{{category}}\""
         topic: "Pesquisar este tópico"
+        private_messages: "Procurar mensagens privadas"
     site_map: "ir para outra lista de tópicos ou categorias"
     go_back: 'voltar atrás'
     not_logged_in_user: 'página de utilizador com resumo da actividade actual e preferências  '
@@ -686,6 +712,7 @@ pt:
         actions: "Acções de Selecção"
         change_category: "Mudar Categoria"
         close_topics: "Fechar Tópicos"
+        archive_topics: "Arquivar tópicos"
         notification_level: "Mudar Nível de Notificação"
         selected:
           one: "Seleccionou  <b>1</b> tópico."
@@ -714,7 +741,7 @@ pt:
         top: "Não existem mais tópicos populares."
     topic:
       filter_to: "{{post_count}} posts no tópico"
-      create: 'Criar Tópico'
+      create: 'Novo tópico'
       create_long: 'Criar um novo Tópico'
       private_message: 'Começar uma nova conversa privada'
       list: 'Tópicos'
@@ -727,7 +754,6 @@ pt:
         one: '1 tópico não lido'
         other: '{{count}} tópicos não lidos'
       title: 'Tópico'
-      loading_more: "Carregando mais tópicos..."
       loading: 'A Carregar tópico...'
       invalid_access:
         title: "Tópico é particular"
@@ -765,6 +791,7 @@ pt:
       jump_reply_down: avançar para resposta mais antiga
       deleted: "Este tópico foi apagado"
       auto_close_notice: "Este tópico vai ser automaticamente fechado em %{timeLeft}."
+      auto_close_notice_based_on_last_post: "Este tópico será fechado %{duration} depois da última resposta"
       auto_close_title: 'Configurações para Fechar Automaticamente'
       auto_close_save: "Guardar"
       auto_close_remove: "Não Fechar Automaticamente Este Tópico"
@@ -788,8 +815,8 @@ pt:
           '2_4': 'Receberá notificações porque inseriu uma resposta neste tópico.'
           '2_2': 'Receberá notificações porque está a monitorizar este tópico.'
           '2': 'Receberá notificações porque <a href="/users/{{username}}/preferences">leu este tópico</a>.'
-          '1_2': 'Receberá notificações apenas se alguém mencionar o seu @nome ou responder à sua mensagem.'
-          '1': 'Receberá notificações apenas se alguém mencionar o seu @nome ou responder à sua mensagem.'
+          '1_2': 'Será notificado se alguém mencionar o seu @nome ou responder às suas mensagens'
+          '1': 'Será notificado se alguém mencionar o seu @nome ou responder às suas mensagens'
           '0_7': 'Está a ignorar todas as notificações nesta categoria.'
           '0_2': 'Está a ignorar todas as notificações para este tópico.'
           '0': 'Está a ignorar todas as notificações para este tópico.'
@@ -799,15 +826,12 @@ pt:
           title: "Observar"
         tracking_pm:
           title: "Seguir"
-          description: "Será apresentada uma contagem de posts novos e não lidos junto da mensagem privada. Será apenas notificado se alguém mencionar o seu @nome ou responder ao seu post."
         tracking:
           title: "Monitorar"
         regular:
           title: "Regular"
-          description: "Será apenas notificado quando alguém mencionar o seu @nome ou responder ao sei post."
         regular_pm:
           title: "Regular"
-          description: "Receberá notificações apenas se alguém mencionar o seu @nome ou responder ao seu post na mensagem privada."
         muted_pm:
           title: "Silenciar"
           description: "Não será notificado relativamente a nada sobre esta mensagem privada."
@@ -869,7 +893,6 @@ pt:
         n_posts:
           one: "1 postagem"
           other: "{{count}} mensagens"
-        cancel: "Mostrar novamente todas as mensagens deste tópico."
       split_topic:
         title: "Mover para um novo Tópico"
         action: "mover para novo tópico"
@@ -936,7 +959,6 @@ pt:
         edit: "Desculpe, houve um erro ao editar a sua mensagem. Por favor, tente outra vez."
         upload: "Desculpe, houve um erro ao enviar esse ficheiro. Por favor, tente outra vez."
         attachment_too_large: "Desculpe, o ficheiro que está a enviar é muito grande (o tamanho máximo permitido é {{max_size_kb}}kb)."
-        image_too_large: "Desculpe, o ficheiro que está a enviar é muito grande (o tamanho máximo é {{max_size_kb}}kb), por favor diminua-o e tente novamente."
         too_many_uploads: "Desculpe, apenas pode enviar um ficheiro de cada vez."
         upload_not_authorized: "Desculpe, o tipo de ficheiro que está a enviar não está autorizado (extensões autorizadas: {{authorized_extensions}})."
         image_upload_not_allowed_for_new_user: "Desculpe, novos utilizadores não podem enviar imagens."
@@ -1100,7 +1122,6 @@ pt:
       general: 'Geral'
       settings: 'Configurações'
       delete: 'Apagar Categoria'
-      create: 'Criar Categoria'
       save: 'Guardar Categoria'
       creation_error: Houve um erro durante a criação da categoria.
       save_error: Houve um erro ao guardar a categoria.
@@ -1144,12 +1165,10 @@ pt:
           title: "Acompanhar"
         regular:
           title: "Normal"
-          description: "Será notificado apenas se alguém mencionar o seu @nome ou responder ao seu post."
         muted:
           title: "Silenciar"
           description: "Não será notificado relativamente a nada deste tópico, e não aparecerão no seu separador de não lidos."
     flagging:
-      title: 'Porque está a denunciar este post em privado?'
       action: 'Sinalizar Postagem'
       take_action: "Tomar Atitude"
       notify_action: 'Mensagem privada'
@@ -1159,14 +1178,11 @@ pt:
       submit_tooltip: "Submeter a denúncia privada"
       take_action_tooltip: "Atingir imediatamente o limite de denúncias, em vez de esperar por mais denúncias da comunidade"
       cant: "Desculpe, não é possível colocar uma sinalização neste momento."
-      custom_placeholder_notify_user: "Porque esta mensagem requer que fale diretamente e privativamente com este utilizador? Seja específico, construtivo e sempre gentil."
-      custom_placeholder_notify_moderators: "Porque esta mensagem requer atenção do moderador? Diga especificamente como isto te preocupou e forneça links relevantes, se possível."
       custom_message:
         at_least: "insira pelo menos {{n}} caracteres"
         more: "{{n}} em falta..."
         left: "{{n}} restantes"
     flagging_topic:
-      title: "Porque está a denunciar este tópico em privado?"
       action: "Denunciar Tópico"
       notify_action: "Mensagem privada"
     topic_map:
@@ -1322,8 +1338,6 @@ pt:
           7_days_ago: "7 Dias Atrás"
           30_days_ago: "30 Dias Atrás"
           all: "Tudo"
-          view_table: "Visualizar como Tabela"
-          view_chart: "Visualizar como Gráfico de Barras"
       commits:
         latest_changes: "Últimas atualizações: atualize com frequência!"
         by: "por"
@@ -1452,7 +1466,6 @@ pt:
             text: "Backup"
             title: "Criar um backup"
             confirm: "Deseja criar um novo backup?"
-            without_uploads: "Sim (sem carregamento)"
           download:
             text: "Descarregar"
             title: "Descarregar o backup"
@@ -1470,18 +1483,11 @@ pt:
             title: "Reverter a base de dados para um estado anterior operacional"
             confirm: "Tem a certeza que deseja reverter a base de dados para um estado anterior operacional?"
       export_csv:
-        users:
-          text: "Exportar Utilizadores"
-          title: "Exportar lista de utilizadores num ficheiro CSV."
-        success: "Exportação foi iniciada, será notificado brevemente do progresso da mesma."
         failed: "Exportação falhou. Por favor verifique os logs."
       customize:
         title: "Personalizar"
         long_title: "Personalizações do Site"
         header: "Cabeçalho"
-        css: "Stylesheet"
-        mobile_header: "Cabeçalho Mobile"
-        mobile_css: "Folha de Estilos Mobile"
         override_default: "Sobrepor padrão?"
         enabled: "Habilitado?"
         preview: "pré-visualização"
@@ -1561,7 +1567,6 @@ pt:
         sent_test: "enviado!"
         delivery_method: "Método de Entrega"
         preview_digest: "Pré-vizualizar modo Digest"
-        preview_digest_desc: "Esta é uma ferramenta para prever o conteúdo dos emails de resumo enviados a partir do seu forum."
         refresh: "Atualizar"
         format: "Formato"
         html: "html"
@@ -1656,8 +1661,6 @@ pt:
           new: "Novos"
           active: "Ativos"
           pending: "Pendentes"
-          admins: 'Administradores'
-          moderators: 'Moderadores'
           suspended: 'Suspenso'
           blocked: 'Bloqueados'
         approved: "Aprovado?"
@@ -1936,7 +1939,6 @@ pt:
         one: "1 concedida"
         other: "%{count} concedidas"
       select_badge_for_title: Selecionar uma medalha para usar como título
-      no_title: "<no title>"
       badge_grouping:
         getting_started:
           name: Dar Início

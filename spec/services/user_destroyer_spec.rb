@@ -128,6 +128,23 @@ describe UserDestroyer do
             spammer_topic.reload.deleted_at.should_not == nil
             spammer_topic.user_id.should == nil
           end
+
+          context "delete_as_spammer is true" do
+
+            before { destroy_opts[:delete_as_spammer] = true }
+
+            it "agrees with flags on user's posts" do
+              spammer_post = Fabricate(:post, user: @user)
+              flag = PostAction.act(@admin, spammer_post, PostActionType.types[:inappropriate])
+              flag.agreed_at.should == nil
+
+              destroy
+
+              flag.reload
+              flag.agreed_at.should_not == nil
+            end
+
+          end
         end
 
         context "users deletes self" do
@@ -263,6 +280,17 @@ describe UserDestroyer do
         category.reload.user_id.should == Discourse.system_user.id
         category.topic.should be_present
         category.topic.user_id.should == Discourse.system_user.id
+      end
+    end
+
+    context 'user got an email' do
+      let(:user) { Fabricate(:user) }
+      let!(:email_log) { Fabricate(:email_log, user: user) }
+
+      it "deletes the email log" do
+        expect {
+          UserDestroyer.new(@admin).destroy(user, {delete_posts: true})
+        }.to change { EmailLog.count }.by(-1)
       end
     end
 
